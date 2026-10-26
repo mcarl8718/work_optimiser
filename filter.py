@@ -6,8 +6,7 @@ import os
 
 BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
 MY_USER_ID  = re.sub(r'\D', '', os.environ["MY_USER_ID"]) 
-AI_API  = os.environ["AI_API"].strip()
-print(f"DEBUG ID LENGTH: {len(MY_USER_ID)}")
+AI_API      = os.environ["AI_API"].strip()
 
 CHANNELS = [
     "castingsmodels", "he1pers", "workermoscowstudents",
@@ -17,7 +16,6 @@ CHANNELS = [
 USER_INTERESTS = """
 одобряй только для мужчин, со ставкой только выше 499 рублей в час. если ставка не указана - одобряй. если сложное решение - одобряй. Всегда лучше одобрить, чем отказать, если отказ не очевидно верен
 """
-
 
 AI_BASE_URL = "https://api.groq.com/openai/v1"
 AI_MODEL    = "qwen/qwen3.8-27b"
@@ -49,12 +47,22 @@ def get(url, timeout=25):
 
 
 def load_state():
+    """Загружает состояние или создает новое, если файла нет."""
     if STATE_FILE.exists():
         try:
-            return json.loads(STATE_FILE.read_text("utf-8"))
+            state = json.loads(STATE_FILE.read_text("utf-8"))
+            # Защита от старого формата (если вдруг не удалил)
+            if "channels" not in state:
+                state["channels"] = {}
+            # Добавляем дефолтные каналы, если их нет в JSON
+            for ch in CHANNELS:
+                if ch not in state["channels"]:
+                    state["channels"][ch] = 0
+            return state
         except Exception:
-            return {}
-    return {}
+            pass
+    # Если файла нет или он битый — создаем чистый
+    return {"channels": {ch: 0 for ch in CHANNELS}, "last_update_id": 0}
 
 
 def save_state(state):
@@ -64,8 +72,7 @@ def save_state(state):
 # ─── Отправка сообщений ──────────────────────────────────────
 
 def send_text(chat_id, text):
-    payload = {"chat_id": chat_id, "text": text,
-               "disable_web_page_preview": True}
+    payload = {"chat_id": chat_id, "text": text, "disable_web_page_preview": True}
     try:
         post_json(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", payload)
         return True
@@ -96,21 +103,18 @@ def send(channel, text, link, note=None):
 # ─── Приём команд от владельца ───────────────────────────────
 
 def extract_channel(s):
-    """Достаёт username канала из 'https://t.me/xxx', '@xxx' или 'xxx'."""
     s = s.strip().rstrip("/")
     m = re.match(r"(?:https?://)?t\.me/([A-Za-z0-9_]+)", s)
-    if m:
-        return m.group(1)
+    if m: return m.group(1)
     m = re.match(r"@?([A-Za-z0-9_]{4,32})$", s)
-    if m:
-        return m.group(1)
+    if m: return m.group(1)
     return None
 
 
 def handle_updates(state):
-    """Опрашивает бота, обрабатывает команды. Возвращает set новых каналов."""
-    last_uid = state.get("_last_update_id", 0)
-    channels = set(state.get("_channels", []))
+    last_uid = state.get("last_update_id", 0)
+    # Теперь все каналы лежат в одном месте
+    channels_dict = state.setdefault("channels", {})
 
     try:
         resp = json.loads(get(
@@ -120,46 +124,39 @@ def handle_updates(state):
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "replace")[:200]
         log(f"getUpdates HTTP {e.code}: {body}")
-        if e.code == 409:
-            log("⚠️ На боте стоит вебхук. Убери его: "
-                f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook")
-        return channels
+        return
     except Exception as e:
         log(f"getUpdates ошибка: {e}")
-        return channels
+        return
 
     if not resp.get("ok"):
-        log(f"getUpdates не ok: {resp}")
-        return channels
+        return
 
     for upd in resp.get("result", []):
         uid = upd["update_id"]
-        state["_last_update_id"] = max(state.get("_last_update_id", 0), uid)
+        state["last_update_id"] = max(last_uid, uid)
+        last_uid = state["last_update_id"]
 
         msg = upd.get("message") or upd.get("edited_message")
-        if not msg:
-            continue
-        if str(msg.get("from", {}).get("id")) != MY_USER_ID:
-            continue
+        if not msg: continue
+        if str(msg.get("from", {}).get("id")) != MY_USER_ID: continue
 
         text = (msg.get("text") or "").strip()
         chat_id = msg["chat"]["id"]
-        if not text:
-            continue
+        if not text: continue
 
         low = text.lower()
 
         if low.startswith("/list"):
-            if channels:
-                send_text(chat_id, "Каналы:\n" + "\n".join(
-                    "• @" + c for c in sorted(channels)))
+            if channels_dict:
+                send_text(chat_id, "Каналы:\n" + "\n".join("• @" + c for c in sorted(channels_dict.keys())))
             else:
                 send_text(chat_id, "Пусто. Кидай ссылку вида t.me/xxx")
 
         elif low.startswith("/add"):
             ch = extract_channel(text[4:].strip())
             if ch:
-                channels.add(ch)
+                channels_dict[ch] = channels_dict.get(ch, 0) # Добавляем с ID 0, если нет
                 send_text(chat_id, f"✅ Добавил @{ch}")
             else:
                 send_text(chat_id, "Не понял. Формат: /add t.me/xxx")
@@ -167,30 +164,22 @@ def handle_updates(state):
         elif low.startswith("/remove") or low.startswith("/del"):
             arg = text.split(maxsplit=1)[1] if " " in text else ""
             ch = extract_channel(arg)
-            if ch and ch in channels:
-                channels.discard(ch)
+            if ch and ch in channels_dict:
+                del channels_dict[ch]
                 send_text(chat_id, f"🗑 Удалил @{ch}")
             else:
                 send_text(chat_id, "Нет такого в списке")
 
         elif low.startswith("/start") or low.startswith("/help"):
-            send_text(chat_id,
-                "Кидай мне ссылку или @username — добавлю в список.\n"
-                "/list — показать текущие\n"
-                "/remove @name — удалить\n"
-                "Проверка новых постов идёт раз в 5 минут.")
+            send_text(chat_id, "Кидай мне ссылку или @username — добавлю в список.\n/list — показать\n/remove @name — удалить")
 
         else:
-            # не команда — пробуем распарсить как канал
             ch = extract_channel(text)
             if ch:
-                channels.add(ch)
+                channels_dict[ch] = channels_dict.get(ch, 0)
                 send_text(chat_id, f"✅ Добавил @{ch}")
             else:
                 send_text(chat_id, "Не понял. Кидай t.me/xxx или @xxx")
-
-    state["_channels"] = sorted(channels)
-    return channels
 
 
 # ─── Парсинг t.me/s/<channel> ────────────────────────────────
@@ -203,12 +192,10 @@ POST_RE = re.compile(
 TAG_RE = re.compile(r"<[^>]+>")
 BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
-
 def strip_tags(s):
     s = BR_RE.sub("\n", s)
     s = TAG_RE.sub("", s)
     return html.unescape(s).strip()
-
 
 def parse_channel(channel):
     page = get(f"https://t.me/s/{channel}")
@@ -217,8 +204,7 @@ def parse_channel(channel):
         ch, num, raw = m.group(1), m.group(2), m.group(3)
         text = strip_tags(raw)
         if text:
-            posts.append({"id": int(num), "text": text,
-                          "link": f"https://t.me/{ch}/{num}"})
+            posts.append({"id": int(num), "text": text, "link": f"https://t.me/{ch}/{num}"})
     posts.sort(key=lambda p: p["id"])
     return posts
 
@@ -242,7 +228,7 @@ def ai_verdict(text):
                 ],
                 "temperature": 0,
                 "max_tokens": 20,
-                "reasoning_effort": "none",  # <-- Вот здесь магия для Qwen
+                "reasoning_effort": "none",
             },
             headers={
                 "Authorization": f"Bearer {AI_API}",
@@ -261,10 +247,9 @@ def ai_verdict(text):
 
         ans = content.upper()
         clean_ans = re.sub(r'^[^A-Z]+', '', ans)
-        if clean_ans.startswith("YES"):
-            return AI_YES
-        if clean_ans.startswith("NO"):
-            return AI_NO
+        if clean_ans.startswith("YES"): return AI_YES
+        if clean_ans.startswith("NO"): return AI_NO
+        
         log(f"  ИИ вернул странное: '{content[:50]}' (finish={finish})")
         return AI_FAIL
     except Exception as e:
@@ -272,10 +257,12 @@ def ai_verdict(text):
         time.sleep(1)
         return AI_FAIL
         
+
 # ─── Обработка одного канала ──────────────────────────────────
 
 def process_channel(channel, state):
-    last = state.get(channel, 0)
+    # ID теперь берем из вложенного словаря
+    last = state["channels"].get(channel, 0)
     try:
         posts = parse_channel(channel)
     except Exception as e:
@@ -293,18 +280,12 @@ def process_channel(channel, state):
         try:
             v = ai_verdict(p["text"])
             
-            # ─── НОВЫЙ БЛОК ЛОГИРОВАНИЯ ───
-            # Убираем переносы строк и обрезаем до 120 символов для читаемости
             preview = p["text"].replace("\n", " ")[:120]
-            if len(p["text"]) > 120:
-                preview += "..."
+            if len(p["text"]) > 120: preview += "..."
             
-            # Выводим: ID поста | Текст | Вердикт ИИ
             log(f"  📝 #{p['id']} | {preview} | 👉 {v.upper()}")
-            # ──────────────────────────────
 
             success = False
-            
             if v == AI_YES:
                 if send(channel, p["text"], p["link"]):
                     log(f"    ✅ Отправлено")
@@ -326,25 +307,23 @@ def process_channel(channel, state):
             log(f"  ошибка #{p['id']}: {e}")
             break
             
-    state[channel] = max_id
+    # Сохраняем ID обратно во вложенный словарь
+    state["channels"][channel] = max_id
+
 
 # ─── Точка входа ──────────────────────────────────────────────
 
 def main():
     state = load_state()
+    
+    # 1. Забираем команды от бота (добавляет каналы прямо в state["channels"])
+    handle_updates(state)
 
-    # 1. Забираем новые команды от владельца
-    dynamic = handle_updates(state)
-
-    # 2. Собираем итоговый список: статический + то, что добавил через бота
-    all_channels = list(dict.fromkeys(CHANNELS + sorted(dynamic)))
-
-    # 3. Гоним по всем
-    for ch in all_channels:
+    # 2. Идем по ВСЕМ каналам из словаря (и базовым, и добавленным)
+    for ch in list(state["channels"].keys()):
         process_channel(ch, state)
 
     save_state(state)
-
 
 if __name__ == "__main__":
     main()
