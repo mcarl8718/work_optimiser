@@ -4,10 +4,9 @@ import re, json, html, time, urllib.request, urllib.error
 from pathlib import Path
 import os
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-MY_USER_ID = os.environ["MY_USER_ID"]
-AI_API_KEY = os.environ["AI_API_KEY"]
-print(f"""!!!!!!! {MY_USER_ID} !!!!!!""")
+BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
+MY_USER_ID  = os.environ["MY_USER_ID"].strip()
+AI_API_KEY  = os.environ["AI_API_KEY"].strip()
 
 CHANNELS = [
     "castingsmodels", "he1pers", "workermoscowstudents",
