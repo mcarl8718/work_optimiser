@@ -5,8 +5,9 @@ from pathlib import Path
 import os
 
 BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
-MY_USER_ID  = int(os.environ["MY_USER_ID"].strip())
+MY_USER_ID  = os.environ["MY_USER_ID"].strip()
 AI_API_KEY  = os.environ["AI_API"].strip()
+print(f"DEBUG ID LENGTH: {len(MY_USER_ID)}")
 
 CHANNELS = [
     "castingsmodels", "he1pers", "workermoscowstudents",
@@ -138,7 +139,7 @@ def handle_updates(state):
         msg = upd.get("message") or upd.get("edited_message")
         if not msg:
             continue
-        if str(msg.get("from", {}).get("id")) != str(MY_USER_ID):
+        if str(msg.get("from", {}).get("id")) != MY_USER_ID:
             continue
 
         text = (msg.get("text") or "").strip()
