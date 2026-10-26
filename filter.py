@@ -138,7 +138,7 @@ def handle_updates(state):
         msg = upd.get("message") or upd.get("edited_message")
         if not msg:
             continue
-        if str(msg.get("from", {}).get("id")) != MY_USER_ID:
+        if str(msg.get("from", {}).get("id")) != str(MY_USER_ID):
             continue
 
         text = (msg.get("text") or "").strip()
