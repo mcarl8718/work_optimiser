@@ -249,16 +249,30 @@ def ai_verdict(text):
                 "Accept": "application/json",
             },
         )
+        
+        # Делаем паузу 2 секунды после каждого запроса, чтобы не ловить 429
+        time.sleep(2)
+        
         ans = resp["choices"][0]["message"]["content"].strip().upper()
-        if ans.startswith("YES"):
+        
+        # Очищаем ответ от мусора в начале строки (звездочек, пробелов, кавычек)
+        clean_ans = re.sub(r'^[^A-Z]+', '', ans)
+        
+        if clean_ans.startswith("YES"):
             return AI_YES
-        if ans.startswith("NO"):
+        if clean_ans.startswith("NO"):
             return AI_NO
+            
+        # Если пришел какой-то бред, выводим его в лог
+        log(f"  ИИ вернул странное: '{ans[:30]}'")
         return AI_FAIL
+        
     except Exception as e:
         log(f"  ИИ недоступен: {e}")
+        # Если поймали ошибку (например 429), тоже делаем паузу перед следующим постом
+        time.sleep(3) 
         return AI_FAIL
-
+        
 # ─── Обработка одного канала ──────────────────────────────────
 
 def process_channel(channel, state):
