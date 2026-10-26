@@ -244,7 +244,7 @@ def ai_verdict(text):
                 "max_tokens": 200,  # <-- БЫЛО 5
             },
             headers={
-                "Authorization": f"Bearer {AI_API_KEY}",
+                "Authorization": f"Bearer {AI_API}",
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0",
                 "Accept": "application/json",
             },
