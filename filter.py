@@ -275,18 +275,35 @@ def process_channel(channel, state):
 
     log(f"[{channel}] новых: {len(fresh)}")
     max_id = last
+    
     for p in fresh:
         try:
             v = ai_verdict(p["text"])
+            success = False  # Флаг: успешно ли мы разобрались с постом
+            
             if v == AI_YES:
                 if send(channel, p["text"], p["link"]):
                     log(f"  → #{p['id']} (фильтр)")
+                    success = True
             elif v == AI_FAIL:
                 if send(channel, p["text"], p["link"], note="⚠️ без фильтрации"):
                     log(f"  → #{p['id']} (без фильтра)")
+                    success = True
+            elif v == AI_NO:
+                # Если ИИ сказал NO, пост нам не нужен, 
+                # считаем это успехом, чтобы больше его не проверять.
+                success = True
+            
+            if success:
+                max_id = max(max_id, p["id"])
+            else:
+                log(f"  ⚠️ Не смог отправить #{p['id']}. Останавливаю канал, попробую в следующий раз.")
+                break  # Прерываем цикл, чтобы не перезаписать state.json и не потерять этот пост
+                
         except Exception as e:
             log(f"  ошибка #{p['id']}: {e}")
-        max_id = max(max_id, p["id"])
+            break  # При любой ошибке тоже останавливаемся, чтобы не проскочить пост
+            
     state[channel] = max_id
 
 
