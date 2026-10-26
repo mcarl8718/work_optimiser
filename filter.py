@@ -20,7 +20,7 @@ USER_INTERESTS = """
 
 
 AI_BASE_URL = "https://api.groq.com/openai/v1"
-AI_MODEL    = "llama-3.3-70b-versatile"
+AI_MODEL    = "qwen/qwen3.8-27b"
 
 STATE_FILE = Path(__file__).parent / "state.json"
 
@@ -237,11 +237,12 @@ def ai_verdict(text):
             {
                 "model": AI_MODEL,
                 "messages": [
-                    {"role": "system", "content": "Ты фильтр. Отвечай только YES или NO."},
+                    {"role": "system", "content": "Отвечай только YES или NO."},
                     {"role": "user", "content": prompt},
                 ],
                 "temperature": 0,
-                "max_tokens": 200,  # <-- БЫЛО 5
+                "max_tokens": 20,
+                "reasoning_effort": "none",  # <-- Вот здесь магия для Qwen
             },
             headers={
                 "Authorization": f"Bearer {AI_API}",
@@ -254,7 +255,6 @@ def ai_verdict(text):
         content = (choice.get("message", {}).get("content") or "").strip()
         finish = choice.get("finish_reason", "?")
 
-        # Если пусто — выводим полный ответ, чтобы понять, что происходит
         if not content:
             log(f"  ИИ пустой ответ (finish={finish}). JSON: {json.dumps(resp)[:300]}")
             return AI_FAIL
