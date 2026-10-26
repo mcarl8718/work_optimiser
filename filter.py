@@ -292,33 +292,41 @@ def process_channel(channel, state):
     for p in fresh:
         try:
             v = ai_verdict(p["text"])
-            success = False  # Флаг: успешно ли мы разобрались с постом
+            
+            # ─── НОВЫЙ БЛОК ЛОГИРОВАНИЯ ───
+            # Убираем переносы строк и обрезаем до 120 символов для читаемости
+            preview = p["text"].replace("\n", " ")[:120]
+            if len(p["text"]) > 120:
+                preview += "..."
+            
+            # Выводим: ID поста | Текст | Вердикт ИИ
+            log(f"  📝 #{p['id']} | {preview} | 👉 {v.upper()}")
+            # ──────────────────────────────
+
+            success = False
             
             if v == AI_YES:
                 if send(channel, p["text"], p["link"]):
-                    log(f"  → #{p['id']} (фильтр)")
+                    log(f"    ✅ Отправлено")
                     success = True
             elif v == AI_FAIL:
                 if send(channel, p["text"], p["link"], note="⚠️ без фильтрации"):
-                    log(f"  → #{p['id']} (без фильтра)")
+                    log(f"    ⚠️ Отправлено без фильтра")
                     success = True
             elif v == AI_NO:
-                # Если ИИ сказал NO, пост нам не нужен, 
-                # считаем это успехом, чтобы больше его не проверять.
                 success = True
             
             if success:
                 max_id = max(max_id, p["id"])
             else:
-                log(f"  ⚠️ Не смог отправить #{p['id']}. Останавливаю канал, попробую в следующий раз.")
-                break  # Прерываем цикл, чтобы не перезаписать state.json и не потерять этот пост
+                log(f"  ❌ Не смог отправить #{p['id']}. Останавливаю канал.")
+                break 
                 
         except Exception as e:
             log(f"  ошибка #{p['id']}: {e}")
-            break  # При любой ошибке тоже останавливаемся, чтобы не проскочить пост
+            break
             
     state[channel] = max_id
-
 
 # ─── Точка входа ──────────────────────────────────────────────
 
