@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 
 BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
-MY_USER_ID  = os.environ["MY_USER_ID"].strip()
+MY_USER_ID  = re.sub(r'\D', '', os.environ["MY_USER_ID"]) 
 AI_API  = os.environ["AI_API"].strip()
 print(f"DEBUG ID LENGTH: {len(MY_USER_ID)}")
 
