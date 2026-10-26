@@ -5,8 +5,8 @@ from pathlib import Path
 import os
 
 BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
-MY_USER_ID  = os.environ["MY_USER_ID"].strip()
-AI_API_KEY  = os.environ["AI_API_KEY"].strip()
+MY_USER_ID  = int(os.environ["MY_USER_ID"].strip())
+AI_API_KEY  = os.environ["AI_API"].strip()
 
 CHANNELS = [
     "castingsmodels", "he1pers", "workermoscowstudents",
