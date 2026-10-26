@@ -3,7 +3,7 @@ name: filter
 env:
   BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
   MY_USER_ID: ${{ secrets.MY_USER_ID }}
-  AI_API_KEY: ${{ secrets.AI_API }}
+  AI_API: ${{ secrets.AI_API }}
 on:
   workflow_dispatch:
   schedule:
