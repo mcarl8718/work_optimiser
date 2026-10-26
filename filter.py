@@ -77,7 +77,7 @@ def send_text(chat_id, text):
         post_json(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", payload)
         return True
     except urllib.error.HTTPError as e:
-        log(f"  TG HTTP {e.code}: {e.read().decode('utf-8','replace')[:200]}")
+        log(f"  TG HTTP {e.code}: {e.read().decode('utf-8','replace')}")
     except Exception as e:
         log(f"  TG ошибка: {e}")
     return False
@@ -94,7 +94,7 @@ def send(channel, text, link, note=None):
         post_json(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", payload)
         return True
     except urllib.error.HTTPError as e:
-        log(f"  TG HTTP {e.code}: {e.read().decode('utf-8','replace')[:200]}")
+        log(f"  TG HTTP {e.code}: {e.read().decode('utf-8','replace')}")
     except Exception as e:
         log(f"  TG ошибка: {e}")
     return False
@@ -122,7 +122,7 @@ def handle_updates(state):
             f"?offset={last_uid + 1}&timeout=0"
         ))
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", "replace")[:200]
+        body = e.read().decode("utf-8", "replace")
         log(f"getUpdates HTTP {e.code}: {body}")
         return
     except Exception as e:
@@ -214,7 +214,7 @@ def parse_channel(channel):
 def ai_verdict(text):
     prompt = (
         f"Интересы пользователя:\n{USER_INTERESTS}\n\n"
-        f"Пост:\n{text[:2000]}\n\n"
+        f"Пост:\n{text}\n\n"
         f"Подходит? Ответь строго YES или NO."
     )
     try:
