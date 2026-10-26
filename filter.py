@@ -6,7 +6,7 @@ import os
 
 BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
 MY_USER_ID  = os.environ["MY_USER_ID"].strip()
-AI_API_KEY  = os.environ["AI_API"].strip()
+AI_API_KEY  = os.environ["AI_API_KEY"].strip()
 print(f"DEBUG ID LENGTH: {len(MY_USER_ID)}")
 
 CHANNELS = [
