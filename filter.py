@@ -237,40 +237,39 @@ def ai_verdict(text):
             {
                 "model": AI_MODEL,
                 "messages": [
-                    {"role": "system", "content": "Отвечай только YES или NO."},
+                    {"role": "system", "content": "Ты фильтр. Отвечай только YES или NO."},
                     {"role": "user", "content": prompt},
                 ],
                 "temperature": 0,
-                "max_tokens": 5,
+                "max_tokens": 200,  # <-- БЫЛО 5
             },
             headers={
-                "Authorization": f"Bearer {AI_API}",
+                "Authorization": f"Bearer {AI_API_KEY}",
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0",
                 "Accept": "application/json",
             },
         )
-        
-        # Делаем паузу 2 секунды после каждого запроса, чтобы не ловить 429
         time.sleep(2)
-        
-        ans = resp["choices"][0]["message"]["content"].strip().upper()
-        
-        # Очищаем ответ от мусора в начале строки (звездочек, пробелов, кавычек)
+        choice = resp["choices"][0]
+        content = (choice.get("message", {}).get("content") or "").strip()
+        finish = choice.get("finish_reason", "?")
+
+        # Если пусто — выводим полный ответ, чтобы понять, что происходит
+        if not content:
+            log(f"  ИИ пустой ответ (finish={finish}). JSON: {json.dumps(resp)[:300]}")
+            return AI_FAIL
+
+        ans = content.upper()
         clean_ans = re.sub(r'^[^A-Z]+', '', ans)
-        
         if clean_ans.startswith("YES"):
             return AI_YES
         if clean_ans.startswith("NO"):
             return AI_NO
-            
-        # Если пришел какой-то бред, выводим его в лог
-        log(f"  ИИ вернул странное: '{ans[:30]}'")
+        log(f"  ИИ вернул странное: '{content[:50]}' (finish={finish})")
         return AI_FAIL
-        
     except Exception as e:
         log(f"  ИИ недоступен: {e}")
-        # Если поймали ошибку (например 429), тоже делаем паузу перед следующим постом
-        time.sleep(3) 
+        time.sleep(1)
         return AI_FAIL
         
 # ─── Обработка одного канала ──────────────────────────────────
