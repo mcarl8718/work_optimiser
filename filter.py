@@ -20,7 +20,7 @@ USER_INTERESTS = """
 
 
 AI_BASE_URL = "https://api.groq.com/openai/v1"
-AI_MODEL    = "llama-3.3-70b-versatile"
+AI_MODEL    = "openai/gpt-oss-120b"
 
 STATE_FILE = Path(__file__).parent / "state.json"
 
