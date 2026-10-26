@@ -6,7 +6,7 @@ import os
 
 BOT_TOKEN   = os.environ["BOT_TOKEN"].strip()
 MY_USER_ID  = os.environ["MY_USER_ID"].strip()
-AI_API_KEY  = os.environ["AI_API_KEY"].strip()
+AI_API  = os.environ["AI_API"].strip()
 print(f"DEBUG ID LENGTH: {len(MY_USER_ID)}")
 
 CHANNELS = [
@@ -244,7 +244,7 @@ def ai_verdict(text):
                 "max_tokens": 5,
             },
             headers={
-                "Authorization": f"Bearer {AI_API_KEY}",
+                "Authorization": f"Bearer {AI_API}",
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0",
                 "Accept": "application/json",
             },
