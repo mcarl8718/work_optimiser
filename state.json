@@ -1,12 +1,12 @@
 {
   "channels": {
-    "castingsmodels": 5129,
+    "castingsmodels": 5140,
     "workermoscowstudents": 3786,
-    "manmodels": 5281,
-    "castingovnet": 3884,
+    "manmodels": 5293,
+    "castingovnet": 3893,
     "he1pers": 9040,
     "helperswork": 660,
     "MVModelVision": 0
   },
-  "last_update_id": 393852719
+  "last_update_id": 393852720
 }
